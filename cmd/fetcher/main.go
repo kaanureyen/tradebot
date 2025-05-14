@@ -53,12 +53,14 @@ func main() {
 func handleTradeEvent(event *binance_connector.WsTradeEvent) {
 	data, err := json.Marshal(TradeDatePrice{event.TradeTime, event.Price})
 	if err != nil {
-		log.Println("Error marshalling data.\nerr:", err, "\ndata:", data)
+		log.Fatalln("Error marshalling data.\nerr:", err, "\ndata:", data)
+		return
 	}
 
 	err = rdb.Publish(ctx, RedisChannel, data).Err()
 	if err != nil {
 		log.Println("Redis Publish error:", err)
+		return
 	}
 
 }
