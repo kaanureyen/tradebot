@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"math"
 	"os"
 	"os/signal"
 	"strconv"
@@ -14,37 +13,6 @@ import (
 	"github.com/kaanureyen/tradebot/cmd/shared/constants"
 	"github.com/redis/go-redis/v9"
 )
-
-type MinMaxLast struct {
-	Min  float64
-	Max  float64
-	Last float64
-}
-
-func (s *MinMaxLast) GetDefault() MinMaxLast {
-	return MinMaxLast{Min: math.Inf(1), Max: math.Inf(-1), Last: math.NaN()}
-}
-
-func (s *MinMaxLast) SetDefault() {
-	*s = s.GetDefault()
-}
-
-func (s *MinMaxLast) IsDefault() bool {
-	def := s.GetDefault()
-	return s.Min == def.Min &&
-		s.Max == def.Max &&
-		math.IsNaN(s.Last) && math.IsNaN(def.Last)
-}
-
-func (s *MinMaxLast) Update(v float64) {
-	if s.Min > v {
-		s.Min = v
-	}
-	if s.Max < v {
-		s.Max = v
-	}
-	s.Last = v
-}
 
 var rdb = redis.NewClient(&redis.Options{
 	Addr: constants.RedisAddress,
@@ -90,12 +58,12 @@ func main() {
 }
 
 // calculates and sends MinMaxLast-s from TradeDatePrice-s from a start date per each resolution
-func calculateMinMaxLast(chDatePrice chan constants.TradeDatePrice, startDate time.Time, resolution time.Duration) chan MinMaxLast {
+func calculateMinMaxLast(chDatePrice chan constants.TradeDatePrice, startDate time.Time, resolution time.Duration) chan constants.MinMaxLast {
 	lastSentDate := startDate
-	var curMinMaxLast MinMaxLast
+	var curMinMaxLast constants.MinMaxLast
 	curMinMaxLast.SetDefault()
 
-	out := make(chan MinMaxLast)
+	out := make(chan constants.MinMaxLast)
 	go func() {
 		defer close(out)
 		for v := range chDatePrice {
