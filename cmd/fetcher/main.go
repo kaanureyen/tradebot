@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -24,6 +23,7 @@ var ctx = context.Background()
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds) // show line number in logs, show microseconds
 	log.SetPrefix("[fetcher] ")
+	log.Println("Started")
 
 	// Create a channel to listen for signals from the OS for graceful shutdown
 	shutdownSignals := make(chan os.Signal, 1)
@@ -33,7 +33,6 @@ func main() {
 	disconnectFromBinance := make(chan struct{})
 	go func() {
 		<-shutdownSignals
-		fmt.Println()
 		log.Println("Received shutdown signal, will quit.")
 		disconnectFromBinance <- struct{}{} // tell Binance to stop
 	}()
@@ -64,6 +63,7 @@ func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEven
 	const timeBeforeReconnect = 5 * time.Second // 300 connections per 5 minutes is the limit. this should be fine
 	const timeoutBeforeReturn = 5 * time.Second // arbitrary. gets done <1ms, I don't think it's over network
 	for {
+		log.Println("Connecting to Binance")
 		// connect to Binance Trade Websocket streamclosing Binance connection
 		websocketStreamClient := binance_connector.NewWebsocketStreamClient(false)
 		doneCh, stopCh, err := websocketStreamClient.WsTradeServe(exchange, handleTradeEvent, handleErrorEvent)
@@ -73,6 +73,7 @@ func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEven
 			time.Sleep(timeBeforeReconnect) // wait before retrying
 			continue                        // retry
 		}
+		log.Println("Connected to Binance")
 
 		// Wait for the WS stream to close OR quit signal
 		select {
