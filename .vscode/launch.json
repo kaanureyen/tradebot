@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Cacher",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/cacher/main.go",
+            "console": "integratedTerminal",
+            "showLog": true  // This will show more debug info including PID
+        }
+    ]
+}
