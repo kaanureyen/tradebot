@@ -10,23 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kaanureyen/tradebot/cmd/shared/constants"
 	"github.com/redis/go-redis/v9"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
-const (
-	RedisAddress = "localhost:6379"
-	RedisChannel = "binance:trade:btcusdt"
-)
-
-type TradeDatePrice struct {
-	TradeDate int64
-	Price     string
-}
-
 var rdb = redis.NewClient(&redis.Options{
-	Addr: RedisAddress,
+	Addr: constants.RedisAddress,
 })
 var ctx = context.Background()
 
@@ -51,13 +42,13 @@ func main() {
 }
 
 func handleTradeEvent(event *binance_connector.WsTradeEvent) {
-	data, err := json.Marshal(TradeDatePrice{event.TradeTime, event.Price})
+	data, err := json.Marshal(constants.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
 		log.Fatalln("Error marshalling data.\nerr:", err, "\ndata:", data)
 		return
 	}
 
-	err = rdb.Publish(ctx, RedisChannel, data).Err()
+	err = rdb.Publish(ctx, constants.RedisChannel, data).Err()
 	if err != nil {
 		log.Println("Redis Publish error:", err)
 		return
@@ -71,7 +62,7 @@ func handleErrorEvent(err error) {
 
 func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEvent func(*binance_connector.WsTradeEvent), handleErrorEvent func(error)) {
 	const timeBeforeReconnect = 5 * time.Second // 300 connections per 5 minutes is the limit. this should be fine
-	const timeoutBeforeReturn = 5 * time.Second // arbitrary. gets one <1ms, I don't think it's over network
+	const timeoutBeforeReturn = 5 * time.Second // arbitrary. gets done <1ms, I don't think it's over network
 	for {
 		// connect to Binance Trade Websocket streamclosing Binance connection
 		websocketStreamClient := binance_connector.NewWebsocketStreamClient(false)
