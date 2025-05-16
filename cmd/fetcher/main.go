@@ -27,13 +27,15 @@ func main() {
 
 	// Create a channel to listen for signals from the OS for graceful shutdown
 	shutdownSignals := make(chan os.Signal, 1)
+	defer close(shutdownSignals)
 	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Create a channel to signal when to disconnect from Binance
 	disconnectFromBinance := make(chan struct{})
 	go func() {
-		<-shutdownSignals
-		log.Println("Received shutdown signal, will quit.")
+		defer close(disconnectFromBinance)
+		sig := <-shutdownSignals
+		log.Println("Received int/term signal, will quit:", sig)
 		disconnectFromBinance <- struct{}{} // tell Binance to stop
 	}()
 	stayConnectedToBinance("BTCUSDT", disconnectFromBinance, handleTradeEvent, handleErrorEvent)
