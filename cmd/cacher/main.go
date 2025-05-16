@@ -116,15 +116,18 @@ func subscribe(subCh string, done chan struct{}) chan string {
 		defer close(out)
 		for {
 			ch := rdb.Subscribe(ctx, subCh).Channel()
-			for msg := range ch {
-				out <- msg.Payload
 
+			for {
 				select {
+				case v, ok := <-ch:
+					if !ok {
+						break
+					}
+					out <- v.Payload
+
 				case <-done:
 					log.Println("Stopping subscription:", subCh)
 					return
-				default:
-					// continue
 				}
 			}
 		}
