@@ -27,43 +27,74 @@ func main() {
 
 	// Create a channel to listen for signals from the OS for graceful shutdown
 	shutdownSignals := make(chan os.Signal, 1)
+	defer close(shutdownSignals)
 	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
 
-	// Create a channel to signal when to disconnect from Binance
-	subDone := make(chan struct{})
+	var shutdownChannels constants.ShutdownChannel
+
 	go func() {
-		defer close(subDone)
+		defer shutdownChannels.CloseAll()
 		sig := <-shutdownSignals
 		log.Println("Received int/term signal, will quit:", sig)
-		subDone <- struct{}{} // tell Binance to stop
+		shutdownChannels.SendAll()
 	}()
 
-	chMinMaxLast :=
-		calculateMinMaxLast(
-			unmarshalTradeDatePrice(
-				subscribe(
-					constants.RedisChannel,
-					subDone,
-				),
-			),
-			time.Now(),
-			10*time.Second,
-		)
+	chMinute := periodicPriceStats(constants.RedisChannel, shutdownChannels.Get(), time.Minute)
+	chHour := periodicPriceStats(constants.RedisChannel, shutdownChannels.Get(), time.Hour)
+	chDay := periodicPriceStats(constants.RedisChannel, shutdownChannels.Get(), 24*time.Hour)
 
-	for v := range chMinMaxLast {
-		log.Println(v)
+	for {
+		if chMinute == nil && chHour == nil && chDay == nil {
+			break
+		}
+
+		select {
+		case v, ok := <-chMinute:
+			if !ok {
+				chMinute = nil
+				continue
+			}
+			log.Printf("%#v\n", v)
+
+		case v, ok := <-chHour:
+			if !ok {
+				chHour = nil
+				continue
+			}
+			log.Println(v)
+
+		case v, ok := <-chDay:
+			if !ok {
+				chDay = nil
+				continue
+			}
+			log.Println(v)
+		}
 	}
 
 	log.Println("Exiting...")
 }
 
+func periodicPriceStats(subCh string, stopCh chan struct{}, period time.Duration) chan constants.AggregatedTradeInfo {
+	return calculateMinMaxLast(
+		unmarshalTradeDatePrice(
+			subscribe(
+				subCh,
+				stopCh,
+			),
+		),
+		time.Now(),
+		period,
+	)
+}
+
 // calculates and sends MinMaxLast-s from TradeDatePrice-s from a start date per each resolution
-func calculateMinMaxLast(chDatePrice chan constants.TradeDatePrice, startDate time.Time, resolution time.Duration) chan constants.MinMaxLast {
+func calculateMinMaxLast(chDatePrice chan constants.TradeDatePrice, startDate time.Time, resolution time.Duration) chan constants.AggregatedTradeInfo {
 	lastSentDate := startDate
-	var curMinMaxLast constants.MinMaxLast
+	var curMinMaxLast constants.AggregatedTradeInfo
 	curMinMaxLast.SetDefault()
 
-	out := make(chan constants.MinMaxLast)
+	out := make(chan constants.AggregatedTradeInfo)
 	go func() {
 		defer close(out)
 		for v := range chDatePrice {
@@ -84,7 +115,7 @@ func calculateMinMaxLast(chDatePrice chan constants.TradeDatePrice, startDate ti
 				lastSentDate = lastSentDate.Add(resolution)
 			}
 			if delta >= 0 {
-				curMinMaxLast.Update(p)
+				curMinMaxLast.Update(d, p)
 			} else {
 				log.Println("[Info] Discarding data:", v, "due to having a timestamp before the last processed interval:", lastSentDate)
 			}
