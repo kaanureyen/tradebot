@@ -2,51 +2,24 @@ package main
 
 import (
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/kaanureyen/tradebot/cmd/shared"
 )
 
-var shutdownChannels shared.ShutdownChannel
-
 func main() {
-	// show line number in logs, show microseconds, add prefix
-	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds)
-	log.SetPrefix("[cacher] ")
-	log.Println("Started")
+	shared.Logger("[cacher ] ")
 
-	// Create a channel to listen for signals from the OS for graceful shutdown
-	shutdownSignals := make(chan os.Signal, 1)
-	defer close(shutdownSignals)
-	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
+	// start shutdown orchestrator
+	var shutdownOrchestrator shared.ShutdownOrchestrator
+	shutdownOrchestrator.Start()
 
-	// initialize shutdown orchestrator
-	shutdownChannels.Init()
-	go func() {
-		sig := <-shutdownSignals
-		log.Println("Received int/term signal, will quit:", sig)
-		shutdownChannels.Shutdown()
-	}()
-
+	// start stat aggregators for different time periods & fan in into stats
 	var chPeriodicStats shared.SlicePeriodicStats
-	chPeriodicStats.Add(shared.RedisChannel, time.Minute, &shutdownChannels)
-	chPeriodicStats.Add(shared.RedisChannel, time.Hour, &shutdownChannels)
-	chPeriodicStats.Add(shared.RedisChannel, time.Hour*24, &shutdownChannels)
-
-	stats := make(chan shared.PeriodicStats)
-	stopCh, finishedCh := chPeriodicStats.FanIn(stats)
-	for i := range stopCh {
-		stopCh[i], finishedCh[i] = shutdownChannels.Get()
-	}
-
-	go func() {
-		<-shutdownChannels.Done
-		log.Println("Exiting stats channel")
-		close(stats)
-	}()
+	chPeriodicStats.Add(shared.RedisChannel, time.Minute, &shutdownOrchestrator)
+	chPeriodicStats.Add(shared.RedisChannel, time.Hour, &shutdownOrchestrator)
+	chPeriodicStats.Add(shared.RedisChannel, time.Hour*24, &shutdownOrchestrator)
+	stats := chPeriodicStats.FanIn(&shutdownOrchestrator)
 
 	func() {
 		for v := range stats {

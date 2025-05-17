@@ -1,16 +1,33 @@
 package shared
 
-type ShutdownChannel struct {
+import (
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+)
+
+type ShutdownOrchestrator struct {
 	send []chan struct{}
 	recv []chan struct{}
 	Done chan struct{}
 }
 
-func (s *ShutdownChannel) Init() {
+func (s *ShutdownOrchestrator) Start() {
+	osCloseSignal := make(chan os.Signal, 1)
+	defer close(osCloseSignal)
+	signal.Notify(osCloseSignal, syscall.SIGINT, syscall.SIGTERM)
+
 	s.Done = make(chan struct{})
+
+	go func() {
+		sig := <-osCloseSignal
+		log.Println("Received int/term signal, will quit:", sig)
+		s.Shutdown()
+	}()
 }
 
-func (s *ShutdownChannel) Get() (chan struct{}, chan struct{}) {
+func (s *ShutdownOrchestrator) Get() (chan struct{}, chan struct{}) {
 	send := make(chan struct{})
 	recv := make(chan struct{})
 	s.send = append(s.send, send)
@@ -18,7 +35,7 @@ func (s *ShutdownChannel) Get() (chan struct{}, chan struct{}) {
 	return send, recv
 }
 
-func (s *ShutdownChannel) Shutdown() {
+func (s *ShutdownOrchestrator) Shutdown() {
 	go func() {
 		// receive done signals
 		for i := range s.recv {

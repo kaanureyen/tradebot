@@ -11,21 +11,33 @@ import (
 )
 
 type PeriodicStats struct {
-	ch     chan AggregatedTradeInfo
-	Period time.Duration
-	Value  AggregatedTradeInfo
+	ch      chan AggregatedTradeInfo // in
+	Period  time.Duration            // in (param)
+	RedisCh string                   // in (param)
+	Value   AggregatedTradeInfo      // out
 }
 
 type SlicePeriodicStats []PeriodicStats
 
-func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownChannel *ShutdownChannel) {
+func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownChannel *ShutdownOrchestrator) {
 	stop, finished := shutdownChannel.Get()
-	*s = append(*s, PeriodicStats{periodicPriceStats(subCh, period, stop, finished), period, AggregatedTradeInfo{}})
+	*s = append(*s, PeriodicStats{periodicPriceStats(subCh, period, stop, finished), period, subCh, AggregatedTradeInfo{}})
 }
 
-func (s *SlicePeriodicStats) FanIn(out chan PeriodicStats) ([]chan struct{}, []chan struct{}) {
+func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *ShutdownOrchestrator) chan PeriodicStats {
+	stats := make(chan PeriodicStats)
+	go func() {
+		<-shutdownOrchestrator.Done
+		log.Println("Closing stats channel")
+		close(stats)
+		log.Println("Closed stats channel")
+	}()
+
 	sigStop := make([]chan struct{}, len(*s))
 	sigDone := make([]chan struct{}, len(*s))
+	for i := range len(*s) {
+		sigStop[i], sigDone[i] = shutdownOrchestrator.Get()
+	}
 	for i, v := range *s {
 		go func() {
 			for {
@@ -36,7 +48,7 @@ func (s *SlicePeriodicStats) FanIn(out chan PeriodicStats) ([]chan struct{}, []c
 						continue
 					}
 					v.Value = val
-					out <- v
+					stats <- v
 
 				case <-sigStop[i]:
 					log.Println("Stopping PeriodicStats FanIn with period:", v.Period)
@@ -46,7 +58,7 @@ func (s *SlicePeriodicStats) FanIn(out chan PeriodicStats) ([]chan struct{}, []c
 			}
 		}()
 	}
-	return sigStop, sigDone
+	return stats
 }
 
 func periodicPriceStats(subCh string, period time.Duration, stop chan struct{}, finished chan struct{}) chan AggregatedTradeInfo {
