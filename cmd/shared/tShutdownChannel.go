@@ -1,21 +1,41 @@
 package shared
 
-type ShutdownChannel []chan struct{}
+type ShutdownChannel struct {
+	send []chan struct{}
+	recv []chan struct{}
+	Done chan struct{}
+}
 
-func (s *ShutdownChannel) Get() chan struct{} {
-	ch := make(chan struct{})
-	*s = append(*s, ch)
-	return ch
+func (s *ShutdownChannel) Init() {
+	s.Done = make(chan struct{})
+}
+
+func (s *ShutdownChannel) Get() (chan struct{}, chan struct{}) {
+	send := make(chan struct{})
+	recv := make(chan struct{})
+	s.send = append(s.send, send)
+	s.recv = append(s.recv, recv)
+	return send, recv
 }
 
 func (s *ShutdownChannel) SendAll() {
-	for i := range *s {
-		(*s)[i] <- struct{}{}
-	}
-}
+	go func() {
+		// receive done signals
+		for i := range s.recv {
+			<-(s.recv)[i]
+		}
 
-func (s *ShutdownChannel) CloseAll() {
-	for i := range *s {
-		close((*s)[i])
+		// close send channels
+		for i := range s.send {
+			close((s.send)[i])
+		}
+
+		// set done
+		s.Done <- struct{}{}
+	}()
+
+	// send stop signals
+	for i := range s.send {
+		(s.send)[i] <- struct{}{}
 	}
 }

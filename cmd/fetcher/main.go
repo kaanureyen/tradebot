@@ -62,8 +62,6 @@ func handleErrorEvent(err error) {
 }
 
 func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEvent func(*binance_connector.WsTradeEvent), handleErrorEvent func(error)) {
-	const timeBeforeReconnect = 5 * time.Second // 300 connections per 5 minutes is the limit. this should be fine
-	const timeoutBeforeReturn = 5 * time.Second // arbitrary. gets done <1ms, I don't think it's over network
 	for {
 		log.Println("Connecting to Binance")
 		// connect to Binance Trade Websocket streamclosing Binance connection
@@ -71,17 +69,17 @@ func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEven
 		doneCh, stopCh, err := websocketStreamClient.WsTradeServe(exchange, handleTradeEvent, handleErrorEvent)
 		if err != nil {
 			log.Println("Error while opening Websocket stream:", err)
-			log.Println("Retrying in:", timeBeforeReconnect)
-			time.Sleep(timeBeforeReconnect) // wait before retrying
-			continue                        // retry
+			log.Println("Retrying in:", shared.TimeBeforeReconnect)
+			time.Sleep(shared.TimeBeforeReconnect) // wait before retrying
+			continue                               // retry
 		}
 		log.Println("Connected to Binance")
 
 		// Wait for the WS stream to close OR quit signal
 		select {
 		case <-doneCh: // Binance is done, but we are not
-			log.Println("Binance connection closed, reconnecting in:", timeBeforeReconnect)
-			time.Sleep(timeBeforeReconnect)
+			log.Println("Binance connection closed, reconnecting in:", shared.TimeBeforeReconnect)
+			time.Sleep(shared.TimeBeforeReconnect)
 			continue // reconnect
 
 		case <-quit: // we are done
@@ -94,8 +92,8 @@ func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEven
 			case <-doneCh:
 				log.Println("Binance connection is closed normally.")
 
-			case <-time.After(timeoutBeforeReturn):
-				log.Println("Timeout (", timeoutBeforeReturn, ") waiting for Binance to close connection")
+			case <-time.After(shared.TimeoutBeforeReturn):
+				log.Println("Timeout (", shared.TimeoutBeforeReturn, ") waiting for Binance to close connection")
 			}
 			return
 		}

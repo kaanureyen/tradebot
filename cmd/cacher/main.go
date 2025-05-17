@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -9,13 +8,8 @@ import (
 	"time"
 
 	"github.com/kaanureyen/tradebot/cmd/shared"
-	"github.com/redis/go-redis/v9"
 )
 
-var rdb = redis.NewClient(&redis.Options{
-	Addr: shared.RedisAddress,
-})
-var ctx = context.Background()
 var shutdownChannels shared.ShutdownChannel
 
 func main() {
@@ -29,45 +23,36 @@ func main() {
 	defer close(shutdownSignals)
 	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
 
+	// initialize shutdown orchestrator
+	shutdownChannels.Init()
 	go func() {
-		defer shutdownChannels.CloseAll()
 		sig := <-shutdownSignals
 		log.Println("Received int/term signal, will quit:", sig)
 		shutdownChannels.SendAll()
 	}()
 
-	chMinute := periodicPriceStats(shared.RedisChannel, time.Minute)
-	chHour := periodicPriceStats(shared.RedisChannel, time.Hour)
-	chDay := periodicPriceStats(shared.RedisChannel, 24*time.Hour)
+	var chPeriodicStats shared.SlicePeriodicStats
+	chPeriodicStats.Add(shared.RedisChannel, time.Minute, &shutdownChannels)
+	chPeriodicStats.Add(shared.RedisChannel, time.Hour, &shutdownChannels)
+	chPeriodicStats.Add(shared.RedisChannel, time.Hour*24, &shutdownChannels)
 
-	for {
-		if chMinute == nil && chHour == nil && chDay == nil {
-			break
-		}
-
-		select {
-		case v, ok := <-chMinute:
-			if !ok {
-				chMinute = nil
-				continue
-			}
-			log.Printf("%#v\n", v)
-
-		case v, ok := <-chHour:
-			if !ok {
-				chHour = nil
-				continue
-			}
-			log.Println(v)
-
-		case v, ok := <-chDay:
-			if !ok {
-				chDay = nil
-				continue
-			}
-			log.Println(v)
-		}
+	stats := make(chan shared.PeriodicStats)
+	stopCh, finishedCh := chPeriodicStats.FanIn(stats)
+	for i := range stopCh {
+		stopCh[i], finishedCh[i] = shutdownChannels.Get()
 	}
+
+	go func() {
+		<-shutdownChannels.Done
+		log.Println("Exiting stats channel")
+		close(stats)
+	}()
+
+	func() {
+		for v := range stats {
+			log.Println("Stat for", v.Period, "is", v.Value)
+		}
+	}()
 
 	log.Println("Exiting...")
 }
