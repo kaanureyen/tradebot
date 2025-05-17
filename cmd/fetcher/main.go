@@ -9,14 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kaanureyen/tradebot/cmd/shared/constants"
+	"github.com/kaanureyen/tradebot/cmd/shared"
 	"github.com/redis/go-redis/v9"
 
 	binance_connector "github.com/binance/binance-connector-go"
 )
 
 var rdb = redis.NewClient(&redis.Options{
-	Addr: constants.RedisAddress,
+	Addr: shared.RedisAddress,
 })
 var ctx = context.Background()
 
@@ -43,13 +43,13 @@ func main() {
 }
 
 func handleTradeEvent(event *binance_connector.WsTradeEvent) {
-	data, err := json.Marshal(constants.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
+	data, err := json.Marshal(shared.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
 		log.Fatalln("Error marshalling data.\nerr:", err, "\ndata:", data)
 		return
 	}
 
-	err = rdb.Publish(ctx, constants.RedisChannel, data).Err()
+	err = rdb.Publish(ctx, shared.RedisChannel, data).Err()
 	if err != nil {
 		log.Println("Redis Publish error:", err)
 		return

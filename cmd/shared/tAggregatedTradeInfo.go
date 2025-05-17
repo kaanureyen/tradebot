@@ -1,39 +1,9 @@
-package constants
+package shared
 
 import (
 	"math"
 	"time"
 )
-
-const (
-	RedisAddress = "localhost:6379"
-	RedisChannel = "binance:trade:btcusdt"
-)
-
-type ShutdownChannel []chan struct{}
-
-func (s *ShutdownChannel) Get() chan struct{} {
-	ch := make(chan struct{})
-	*s = append(*s, ch)
-	return ch
-}
-
-func (s *ShutdownChannel) SendAll() {
-	for i := 0; i < len(*s); i++ {
-		(*s)[i] <- struct{}{}
-	}
-}
-
-func (s *ShutdownChannel) CloseAll() {
-	for i := 0; i < len(*s); i++ {
-		close((*s)[i])
-	}
-}
-
-type TradeDatePrice struct {
-	TradeDate int64
-	Price     string
-}
 
 type AggregatedTradeInfo struct {
 	TimeFirst time.Time

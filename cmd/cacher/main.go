@@ -8,15 +8,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kaanureyen/tradebot/cmd/shared/constants"
+	"github.com/kaanureyen/tradebot/cmd/shared"
 	"github.com/redis/go-redis/v9"
 )
 
 var rdb = redis.NewClient(&redis.Options{
-	Addr: constants.RedisAddress,
+	Addr: shared.RedisAddress,
 })
 var ctx = context.Background()
-var shutdownChannels constants.ShutdownChannel
+var shutdownChannels shared.ShutdownChannel
 
 func main() {
 	// show line number in logs, show microseconds, add prefix
@@ -36,9 +36,9 @@ func main() {
 		shutdownChannels.SendAll()
 	}()
 
-	chMinute := periodicPriceStats(constants.RedisChannel, time.Minute)
-	chHour := periodicPriceStats(constants.RedisChannel, time.Hour)
-	chDay := periodicPriceStats(constants.RedisChannel, 24*time.Hour)
+	chMinute := periodicPriceStats(shared.RedisChannel, time.Minute)
+	chHour := periodicPriceStats(shared.RedisChannel, time.Hour)
+	chDay := periodicPriceStats(shared.RedisChannel, 24*time.Hour)
 
 	for {
 		if chMinute == nil && chHour == nil && chDay == nil {

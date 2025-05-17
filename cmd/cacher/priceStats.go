@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/kaanureyen/tradebot/cmd/shared/constants"
+	"github.com/kaanureyen/tradebot/cmd/shared"
 )
 
-func periodicPriceStats(subCh string, period time.Duration) chan constants.AggregatedTradeInfo {
+func periodicPriceStats(subCh string, period time.Duration) chan shared.AggregatedTradeInfo {
 	return calculatePriceStats(
 		unmarshalTradeDatePrice(
 			subscribeRedis(
@@ -23,12 +23,12 @@ func periodicPriceStats(subCh string, period time.Duration) chan constants.Aggre
 }
 
 // calculates and sends MinMaxLast-s from TradeDatePrice-s from a start date per each resolution
-func calculatePriceStats(chDatePrice chan constants.TradeDatePrice, startDate time.Time, resolution time.Duration) chan constants.AggregatedTradeInfo {
+func calculatePriceStats(chDatePrice chan shared.TradeDatePrice, startDate time.Time, resolution time.Duration) chan shared.AggregatedTradeInfo {
 	lastSentDate := startDate
-	var curMinMaxLast constants.AggregatedTradeInfo
+	var curMinMaxLast shared.AggregatedTradeInfo
 	curMinMaxLast.SetDefault()
 
-	out := make(chan constants.AggregatedTradeInfo)
+	out := make(chan shared.AggregatedTradeInfo)
 	go func() {
 		defer close(out)
 		for v := range chDatePrice {
@@ -58,15 +58,15 @@ func calculatePriceStats(chDatePrice chan constants.TradeDatePrice, startDate ti
 	return out
 }
 
-func unmarshalTradeDatePrice(inp chan string) chan constants.TradeDatePrice {
-	out := make(chan constants.TradeDatePrice)
+func unmarshalTradeDatePrice(inp chan string) chan shared.TradeDatePrice {
+	out := make(chan shared.TradeDatePrice)
 	go func() {
 		defer close(out)
 		for msg := range inp {
-			var msgStruct constants.TradeDatePrice
+			var msgStruct shared.TradeDatePrice
 			err := json.Unmarshal([]byte(msg), &msgStruct)
 			if err != nil {
-				log.Println("Failed to unmarshal to constants.TradeDatePrice:", err)
+				log.Println("Failed to unmarshal to shared.TradeDatePrice:", err)
 				continue
 			}
 			out <- msgStruct
