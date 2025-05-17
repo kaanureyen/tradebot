@@ -77,7 +77,7 @@ func periodicPriceStats(subCh string, period time.Duration, shutdownOrchestrator
 				stop,
 			),
 		),
-		time.Now(),
+		time.Now().Truncate(24*time.Hour),
 		period,
 		finished,
 	)
