@@ -6,49 +6,49 @@ import (
 )
 
 type AggregatedTradeInfo struct {
-	TimeFirst time.Time
-	TimeLast  time.Time
-	Min       float64
-	Max       float64
-	First     float64
-	Last      float64
+	timeFirst time.Time
+	timeLast  time.Time
+	min       float64
+	max       float64
+	first     float64
+	last      float64
 }
 
-func (s *AggregatedTradeInfo) GetDefault() AggregatedTradeInfo {
+func (s *AggregatedTradeInfo) getDefault() AggregatedTradeInfo {
 	return AggregatedTradeInfo{
-		TimeFirst: time.Time{},
-		TimeLast:  time.Time{},
-		Min:       math.Inf(1),
-		Max:       math.Inf(-1),
-		First:     math.NaN(),
-		Last:      math.NaN()}
+		timeFirst: time.Time{},
+		timeLast:  time.Time{},
+		min:       math.Inf(1),
+		max:       math.Inf(-1),
+		first:     math.NaN(),
+		last:      math.NaN()}
 }
 
 func (s *AggregatedTradeInfo) SetDefault() {
-	*s = s.GetDefault()
+	*s = s.getDefault()
 }
 
 func (s *AggregatedTradeInfo) IsDefault() bool {
-	def := s.GetDefault()
-	return s.TimeFirst == def.TimeFirst &&
-		s.TimeLast == def.TimeLast &&
-		s.Min == def.Min &&
-		s.Max == def.Max &&
-		math.IsNaN(s.First) && math.IsNaN(def.First) &&
-		math.IsNaN(s.Last) && math.IsNaN(def.Last)
+	def := s.getDefault()
+	return s.timeFirst == def.timeFirst &&
+		s.timeLast == def.timeLast &&
+		s.min == def.min &&
+		s.max == def.max &&
+		math.IsNaN(s.first) && math.IsNaN(def.first) &&
+		math.IsNaN(s.last) && math.IsNaN(def.last)
 }
 
 func (s *AggregatedTradeInfo) Update(d time.Time, v float64) {
 	if s.IsDefault() {
-		s.TimeFirst = d
-		s.First = v
+		s.timeFirst = d
+		s.first = v
 	}
-	s.TimeLast = d
-	if s.Min > v {
-		s.Min = v
+	s.timeLast = d
+	if s.min > v {
+		s.min = v
 	}
-	if s.Max < v {
-		s.Max = v
+	if s.max < v {
+		s.max = v
 	}
-	s.Last = v
+	s.last = v
 }

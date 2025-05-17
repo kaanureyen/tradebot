@@ -11,28 +11,28 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type PeriodicStats struct {
+type periodicStats struct {
 	ch          chan AggregatedTradeInfo // in
-	Period      time.Duration            // in&out (param)
-	RedisChName string                   // in&out (param)
-	Value       AggregatedTradeInfo      // out
+	period      time.Duration            // in&out (param)
+	redisChName string                   // in&out (param)
+	value       AggregatedTradeInfo      // out
 }
 
-type SlicePeriodicStats []PeriodicStats
+type SlicePeriodicStats []periodicStats
 
 func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownOrchestrator *shared.ShutdownOrchestrator) {
 	*s = append(*s,
-		PeriodicStats{
+		periodicStats{
 			ch:          periodicPriceStats(subCh, period, shutdownOrchestrator),
-			Period:      period,
-			RedisChName: subCh,
-			Value:       AggregatedTradeInfo{},
+			period:      period,
+			redisChName: subCh,
+			value:       AggregatedTradeInfo{},
 		},
 	)
 }
 
-func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestrator) chan PeriodicStats {
-	stats := make(chan PeriodicStats)
+func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestrator) chan periodicStats {
+	stats := make(chan periodicStats)
 	go func() {
 		<-shutdownOrchestrator.Done
 		log.Println("Closing stats channel")
@@ -54,11 +54,11 @@ func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestr
 						(*s)[i].ch = nil
 						continue
 					}
-					v.Value = val
+					v.value = val
 					stats <- v
 
 				case <-sigStop[i]:
-					log.Println("Stopping PeriodicStats FanIn with period:", v.Period)
+					log.Println("Stopping PeriodicStats FanIn with period:", v.period)
 					sigDone[i] <- struct{}{}
 					return
 				}
