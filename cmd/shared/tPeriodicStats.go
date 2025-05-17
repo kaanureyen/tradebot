@@ -11,17 +11,23 @@ import (
 )
 
 type PeriodicStats struct {
-	ch      chan AggregatedTradeInfo // in
-	Period  time.Duration            // in (param)
-	RedisCh string                   // in (param)
-	Value   AggregatedTradeInfo      // out
+	ch          chan AggregatedTradeInfo // in
+	Period      time.Duration            // in&out (param)
+	RedisChName string                   // in&out (param)
+	Value       AggregatedTradeInfo      // out
 }
 
 type SlicePeriodicStats []PeriodicStats
 
-func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownChannel *ShutdownOrchestrator) {
-	stop, finished := shutdownChannel.Get()
-	*s = append(*s, PeriodicStats{periodicPriceStats(subCh, period, stop, finished), period, subCh, AggregatedTradeInfo{}})
+func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownOrchestrator *ShutdownOrchestrator) {
+	*s = append(*s,
+		PeriodicStats{
+			ch:          periodicPriceStats(subCh, period, shutdownOrchestrator),
+			Period:      period,
+			RedisChName: subCh,
+			Value:       AggregatedTradeInfo{},
+		},
+	)
 }
 
 func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *ShutdownOrchestrator) chan PeriodicStats {
@@ -61,7 +67,8 @@ func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *ShutdownOrchestrator) c
 	return stats
 }
 
-func periodicPriceStats(subCh string, period time.Duration, stop chan struct{}, finished chan struct{}) chan AggregatedTradeInfo {
+func periodicPriceStats(subCh string, period time.Duration, shutdownOrchestrator *ShutdownOrchestrator) chan AggregatedTradeInfo {
+	stop, finished := shutdownOrchestrator.Get()
 	return calculatePriceStats(
 		unmarshalTradeDatePrice(
 			subscribeRedis(
@@ -75,16 +82,20 @@ func periodicPriceStats(subCh string, period time.Duration, stop chan struct{}, 
 	)
 }
 
-// calculates and sends MinMaxLast-s from TradeDatePrice-s from a start date per each resolution
+// calculates and sends AggregateTradeInfo-s from TradeDatePrice-s from a start date per each resolution
 func calculatePriceStats(chDatePrice chan TradeDatePrice, startDate time.Time, resolution time.Duration, finished chan struct{}) chan AggregatedTradeInfo {
 	lastSentDate := startDate
-	var curMinMaxLast AggregatedTradeInfo
-	curMinMaxLast.SetDefault()
+
+	var curAgg AggregatedTradeInfo
+	curAgg.SetDefault()
 
 	out := make(chan AggregatedTradeInfo)
 	go func() {
-		defer func() { finished <- struct{}{} }()
-		defer close(out)
+		defer func() {
+			close(out)
+			finished <- struct{}{}
+		}()
+
 		for v := range chDatePrice {
 			// parse price to float
 			p, err := strconv.ParseFloat(v.Price, 64)
@@ -93,17 +104,20 @@ func calculatePriceStats(chDatePrice chan TradeDatePrice, startDate time.Time, r
 				continue
 			}
 
+			// determine its time-group
 			d := time.UnixMilli(v.TradeDate)
 			delta := d.Sub(lastSentDate)
-			if delta >= resolution {
-				if !curMinMaxLast.IsDefault() {
-					out <- curMinMaxLast
+			if delta >= resolution { // latest received message belongs to the next group
+				if !curAgg.IsDefault() { // send current aggregation if populated
+					out <- curAgg
 				}
-				curMinMaxLast.SetDefault()
-				lastSentDate = lastSentDate.Add(resolution)
+				curAgg.SetDefault() // reset for the next time group
+
+				lastSentDate = lastSentDate.Add((delta / resolution) * resolution) // move the time group marker forward
+
 			}
 			if delta >= 0 {
-				curMinMaxLast.Update(d, p)
+				curAgg.Update(d, p)
 			} else {
 				log.Println("[Info] Discarding data:", v, "due to having a timestamp before the last processed interval:", lastSentDate)
 			}
@@ -129,6 +143,7 @@ func unmarshalTradeDatePrice(inp chan string) chan TradeDatePrice {
 	return out
 }
 
+// accepts redis channel name to connect. returns redis message receive channel
 func subscribeRedis(subCh string, done chan struct{}) chan string {
 	var rdb = redis.NewClient(&redis.Options{
 		Addr: RedisAddress,
