@@ -15,12 +15,12 @@ type ShutdownOrchestrator struct {
 
 func (s *ShutdownOrchestrator) Start() {
 	osCloseSignal := make(chan os.Signal, 1)
-	defer close(osCloseSignal)
 	signal.Notify(osCloseSignal, syscall.SIGINT, syscall.SIGTERM)
 
 	s.Done = make(chan struct{})
 
 	go func() {
+		defer close(osCloseSignal)
 		sig := <-osCloseSignal
 		log.Println("Received int/term signal, will quit:", sig)
 		s.Shutdown()
