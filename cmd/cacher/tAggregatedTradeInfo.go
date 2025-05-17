@@ -6,22 +6,22 @@ import (
 )
 
 type AggregatedTradeInfo struct {
-	timeFirst time.Time
-	timeLast  time.Time
-	min       float64
-	max       float64
-	first     float64
-	last      float64
+	firstTime  time.Time `bson:"firsttimestamp"`
+	lastTime   time.Time `bson:"lasttimestamp"`
+	minPrice   float64   `bson:"min_price"`
+	maxPrice   float64   `bson:"max_price"`
+	firstPrice float64   `bson:"first_price"`
+	lastPrice  float64   `bson:"last_price"`
 }
 
 func (s *AggregatedTradeInfo) getDefault() AggregatedTradeInfo {
 	return AggregatedTradeInfo{
-		timeFirst: time.Time{},
-		timeLast:  time.Time{},
-		min:       math.Inf(1),
-		max:       math.Inf(-1),
-		first:     math.NaN(),
-		last:      math.NaN()}
+		firstTime:  time.Time{},
+		lastTime:   time.Time{},
+		minPrice:   math.Inf(1),
+		maxPrice:   math.Inf(-1),
+		firstPrice: math.NaN(),
+		lastPrice:  math.NaN()}
 }
 
 func (s *AggregatedTradeInfo) SetDefault() {
@@ -30,25 +30,25 @@ func (s *AggregatedTradeInfo) SetDefault() {
 
 func (s *AggregatedTradeInfo) IsDefault() bool {
 	def := s.getDefault()
-	return s.timeFirst == def.timeFirst &&
-		s.timeLast == def.timeLast &&
-		s.min == def.min &&
-		s.max == def.max &&
-		math.IsNaN(s.first) && math.IsNaN(def.first) &&
-		math.IsNaN(s.last) && math.IsNaN(def.last)
+	return s.firstTime == def.firstTime &&
+		s.lastTime == def.lastTime &&
+		s.minPrice == def.minPrice &&
+		s.maxPrice == def.maxPrice &&
+		math.IsNaN(s.firstPrice) && math.IsNaN(def.firstPrice) &&
+		math.IsNaN(s.lastPrice) && math.IsNaN(def.lastPrice)
 }
 
 func (s *AggregatedTradeInfo) Update(d time.Time, v float64) {
 	if s.IsDefault() {
-		s.timeFirst = d
-		s.first = v
+		s.firstTime = d
+		s.firstPrice = v
 	}
-	s.timeLast = d
-	if s.min > v {
-		s.min = v
+	s.lastTime = d
+	if s.minPrice > v {
+		s.minPrice = v
 	}
-	if s.max < v {
-		s.max = v
+	if s.maxPrice < v {
+		s.maxPrice = v
 	}
-	s.last = v
+	s.lastPrice = v
 }
