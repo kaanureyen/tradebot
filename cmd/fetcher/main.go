@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/kaanureyen/tradebot/cmd/shared"
@@ -21,28 +18,20 @@ var rdb = redis.NewClient(&redis.Options{
 var ctx = context.Background()
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile | log.Lmicroseconds) // show line number in logs, show microseconds
-	log.SetPrefix("[fetcher] ")
-	log.Println("Started")
+	shared.Logger("[fetcher] ")
 
-	// Create a channel to listen for signals from the OS for graceful shutdown
-	shutdownSignals := make(chan os.Signal, 1)
-	defer close(shutdownSignals)
-	signal.Notify(shutdownSignals, syscall.SIGINT, syscall.SIGTERM)
+	// start shutdown orchestrator
+	var shutdownOrchestrator shared.ShutdownOrchestrator
+	shutdownOrchestrator.Start()
 
-	// Create a channel to signal when to disconnect from Binance
-	disconnectFromBinance := make(chan struct{})
-	go func() {
-		defer close(disconnectFromBinance)
-		sig := <-shutdownSignals
-		log.Println("Received int/term signal, will quit:", sig)
-		disconnectFromBinance <- struct{}{} // tell Binance to stop
-	}()
-	stayConnectedToBinance("BTCUSDT", disconnectFromBinance, handleTradeEvent, handleErrorEvent)
+	// fetch data from binance & publish on redis
+	fetchAndPublish("BTCUSDT", &shutdownOrchestrator, tradeEvent, errorEvent)
+
+	<-shutdownOrchestrator.Done
 	log.Println("Exiting...")
 }
 
-func handleTradeEvent(event *binance_connector.WsTradeEvent) {
+func tradeEvent(event *binance_connector.WsTradeEvent) {
 	data, err := json.Marshal(shared.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
 		log.Fatalln("Error marshalling data.\nerr:", err, "\ndata:", data)
@@ -54,17 +43,19 @@ func handleTradeEvent(event *binance_connector.WsTradeEvent) {
 		log.Println("Redis Publish error:", err)
 		return
 	}
-
 }
 
-func handleErrorEvent(err error) {
+func errorEvent(err error) {
 	log.Println("Error in Websocket stream:", err)
 }
 
-func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEvent func(*binance_connector.WsTradeEvent), handleErrorEvent func(error)) {
-	for {
+func fetchAndPublish(exchange string, shutdownOrchestrator *shared.ShutdownOrchestrator, handleTradeEvent func(*binance_connector.WsTradeEvent), handleErrorEvent func(error)) {
+	stop, done := shutdownOrchestrator.Get() // get stop and done signals
+	defer func() { done <- struct{}{} }()    // tell orchestrator this is done
+
+	for { // connection will drop. reconnect when happens
 		log.Println("Connecting to Binance")
-		// connect to Binance Trade Websocket streamclosing Binance connection
+		// connect to Binance Trade Websocket stream
 		websocketStreamClient := binance_connector.NewWebsocketStreamClient(false)
 		doneCh, stopCh, err := websocketStreamClient.WsTradeServe(exchange, handleTradeEvent, handleErrorEvent)
 		if err != nil {
@@ -82,7 +73,7 @@ func stayConnectedToBinance(exchange string, quit chan struct{}, handleTradeEven
 			time.Sleep(shared.TimeBeforeReconnect)
 			continue // reconnect
 
-		case <-quit: // we are done
+		case <-stop: // stop command from shutdown orchestrator
 			log.Println("Telling Binance to quit.")
 			stopCh <- struct{}{}
 			log.Println("Waiting for Binance to close connection.")

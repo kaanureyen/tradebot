@@ -47,8 +47,12 @@ func (s *ShutdownOrchestrator) Shutdown() {
 			close((s.send)[i])
 		}
 
-		// set done
-		s.Done <- struct{}{}
+		// set done for every optional receiver
+		go func() {
+			for {
+				s.Done <- struct{}{}
+			}
+		}()
 	}()
 
 	// send stop signals

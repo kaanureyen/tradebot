@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	shared.Logger("[cacher ] ")
+	shared.Logger("[cacher] ")
 
 	// start shutdown orchestrator
 	var shutdownOrchestrator shared.ShutdownOrchestrator
@@ -27,5 +27,6 @@ func main() {
 		}
 	}()
 
+	<-shutdownOrchestrator.Done
 	log.Println("Exiting...")
 }
