@@ -18,7 +18,7 @@ func (s *ShutdownChannel) Get() (chan struct{}, chan struct{}) {
 	return send, recv
 }
 
-func (s *ShutdownChannel) SendAll() {
+func (s *ShutdownChannel) Shutdown() {
 	go func() {
 		// receive done signals
 		for i := range s.recv {

@@ -28,7 +28,7 @@ func main() {
 	go func() {
 		sig := <-shutdownSignals
 		log.Println("Received int/term signal, will quit:", sig)
-		shutdownChannels.SendAll()
+		shutdownChannels.Shutdown()
 	}()
 
 	var chPeriodicStats shared.SlicePeriodicStats
