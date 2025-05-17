@@ -1,4 +1,4 @@
-package shared
+package main
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kaanureyen/tradebot/cmd/shared"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -19,7 +20,7 @@ type PeriodicStats struct {
 
 type SlicePeriodicStats []PeriodicStats
 
-func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownOrchestrator *ShutdownOrchestrator) {
+func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownOrchestrator *shared.ShutdownOrchestrator) {
 	*s = append(*s,
 		PeriodicStats{
 			ch:          periodicPriceStats(subCh, period, shutdownOrchestrator),
@@ -30,7 +31,7 @@ func (s *SlicePeriodicStats) Add(subCh string, period time.Duration, shutdownOrc
 	)
 }
 
-func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *ShutdownOrchestrator) chan PeriodicStats {
+func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestrator) chan PeriodicStats {
 	stats := make(chan PeriodicStats)
 	go func() {
 		<-shutdownOrchestrator.Done
@@ -67,7 +68,7 @@ func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *ShutdownOrchestrator) c
 	return stats
 }
 
-func periodicPriceStats(subCh string, period time.Duration, shutdownOrchestrator *ShutdownOrchestrator) chan AggregatedTradeInfo {
+func periodicPriceStats(subCh string, period time.Duration, shutdownOrchestrator *shared.ShutdownOrchestrator) chan AggregatedTradeInfo {
 	stop, finished := shutdownOrchestrator.Get()
 	return calculatePriceStats(
 		unmarshalTradeDatePrice(
@@ -83,7 +84,7 @@ func periodicPriceStats(subCh string, period time.Duration, shutdownOrchestrator
 }
 
 // calculates and sends AggregateTradeInfo-s from TradeDatePrice-s from a start date per each resolution
-func calculatePriceStats(chDatePrice chan TradeDatePrice, startDate time.Time, resolution time.Duration, finished chan struct{}) chan AggregatedTradeInfo {
+func calculatePriceStats(chDatePrice chan shared.TradeDatePrice, startDate time.Time, resolution time.Duration, finished chan struct{}) chan AggregatedTradeInfo {
 	lastSentDate := startDate
 
 	var curAgg AggregatedTradeInfo
@@ -126,12 +127,12 @@ func calculatePriceStats(chDatePrice chan TradeDatePrice, startDate time.Time, r
 	return out
 }
 
-func unmarshalTradeDatePrice(inp chan string) chan TradeDatePrice {
-	out := make(chan TradeDatePrice)
+func unmarshalTradeDatePrice(inp chan string) chan shared.TradeDatePrice {
+	out := make(chan shared.TradeDatePrice)
 	go func() {
 		defer close(out)
 		for msg := range inp {
-			var msgStruct TradeDatePrice
+			var msgStruct shared.TradeDatePrice
 			err := json.Unmarshal([]byte(msg), &msgStruct)
 			if err != nil {
 				log.Println("Failed to unmarshal to TradeDatePrice:", err)
@@ -146,7 +147,7 @@ func unmarshalTradeDatePrice(inp chan string) chan TradeDatePrice {
 // accepts redis channel name to connect. returns redis message receive channel
 func subscribeRedis(subCh string, done chan struct{}) chan string {
 	var rdb = redis.NewClient(&redis.Options{
-		Addr: RedisAddress,
+		Addr: shared.RedisAddress,
 	})
 	var ctx = context.Background()
 	out := make(chan string)

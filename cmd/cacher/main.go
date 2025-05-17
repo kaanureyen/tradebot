@@ -15,8 +15,8 @@ func main() {
 	shutdownOrchestrator.Start()
 
 	// start stat aggregators for different time periods & fan in into stats
-	var chPeriodicStats shared.SlicePeriodicStats
-	chPeriodicStats.Add(shared.RedisChannel, time.Minute, &shutdownOrchestrator)
+	var chPeriodicStats SlicePeriodicStats
+	chPeriodicStats.Add(shared.RedisChannel, 5*time.Second, &shutdownOrchestrator)
 	chPeriodicStats.Add(shared.RedisChannel, time.Hour, &shutdownOrchestrator)
 	chPeriodicStats.Add(shared.RedisChannel, time.Hour*24, &shutdownOrchestrator)
 	stats := chPeriodicStats.FanIn(&shutdownOrchestrator)
