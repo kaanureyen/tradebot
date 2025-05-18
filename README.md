@@ -78,15 +78,8 @@ Dashboard links are:
 
 cAdvisor collects performance data from all containers.
 
-Prometheus scrapes cAdvisor and stores the data.
+Prometheus scrapes cAdvisor and provided `/metrics` endpoints from the services, and stores the data.
 
-Grafana can get data from Prometheus & visualize it, but needs some configuring:
-1) Login to the its dashboard.
-2) Go to Configuration -> Data Sources
-3) Add Prometheus URL: `http://prometheus:9090` and save.
+Grafana gets data from Prometheus.
 
-Then, we need to add a dashboard.
-1) In Grafana, go to Dashboards -> Import
-2) You can use dashbord ID `14282` for cAdvisor dashboard.
-
-Now we can view historic performance data plots from Grafana, and the real-time ones from cAdvisor.
+Default dashboards are configured on Grafana.
