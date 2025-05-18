@@ -22,7 +22,7 @@ func (s *ShutdownOrchestrator) Start() {
 	go func() {
 		defer close(osCloseSignal)
 		sig := <-osCloseSignal
-		log.Println("Received int/term signal, will quit:", sig)
+		log.Println("[Info] Received int/term signal, will quit:", sig)
 		s.Shutdown()
 	}()
 }

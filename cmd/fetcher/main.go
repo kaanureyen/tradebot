@@ -4,24 +4,52 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/kaanureyen/tradebot/cmd/shared"
 	"github.com/redis/go-redis/v9"
 
 	binance_connector "github.com/binance/binance-connector-go"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// global redis & context to publish data
 var rdb = redis.NewClient(&redis.Options{
 	Addr: shared.RedisAddress,
 })
 var ctx = context.Background()
 
+// prometheus counter for metrics
+var tradesReceived = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "trades_received_total",
+		Help: "Total number of trades received from Binance.",
+	},
+)
+var tradesPublished = prometheus.NewCounter(
+	prometheus.CounterOpts{
+		Name: "trades_published_total",
+		Help: "Total number of trades published to Redis.",
+	},
+)
+
 func main() {
 	shutdownOrchestrator := shared.InitCommon("fetcher") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
 	defer func() {
 		<-shutdownOrchestrator.Done // blocks until every shutdownOrchestrator.Get()'s recv is sent an empty struct, after a interrupt/terminate signal.
-		log.Println("Exiting...")
+		log.Println("[Info] Exiting...")
+	}()
+
+	// register the prometheus metric
+	prometheus.MustRegister(tradesReceived)
+	prometheus.MustRegister(tradesPublished)
+	// start prometheus metrics
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		log.Fatal("[Fatal][Error] Prometheus metrics endpoint could not be opened. Error: ", http.ListenAndServe(":2112", nil))
 	}()
 
 	// fetch data from binance & publish on redis
@@ -29,6 +57,8 @@ func main() {
 }
 
 func tradeEvent(event *binance_connector.WsTradeEvent) {
+	go tradesReceived.Inc()
+
 	data, err := json.Marshal(shared.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
 		log.Printf("[Warning] Failed marshaling data. Skipping data.\nErr: %v\nData: %v", err, data)
@@ -40,6 +70,7 @@ func tradeEvent(event *binance_connector.WsTradeEvent) {
 		log.Println("[Warning] Redis Publish error:", err)
 		return
 	}
+	go tradesPublished.Inc()
 }
 
 func errorEvent(err error) {
