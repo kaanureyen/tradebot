@@ -18,17 +18,14 @@ var rdb = redis.NewClient(&redis.Options{
 var ctx = context.Background()
 
 func main() {
-	shared.Logger("[fetcher] ")
-
-	// start shutdown orchestrator
-	var shutdownOrchestrator shared.ShutdownOrchestrator
-	shutdownOrchestrator.Start()
+	shutdownOrchestrator := shared.InitCommon("fetcher") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
+	defer func() {
+		<-shutdownOrchestrator.Done // blocks until every shutdownOrchestrator.Get()'s recv is sent an empty struct, after a interrupt/terminate signal.
+		log.Println("Exiting...")
+	}()
 
 	// fetch data from binance & publish on redis
-	fetchAndPublish("BTCUSDT", &shutdownOrchestrator, tradeEvent, errorEvent)
-
-	<-shutdownOrchestrator.Done
-	log.Println("Exiting...")
+	fetchAndPublish("BTCUSDT", shutdownOrchestrator, tradeEvent, errorEvent)
 }
 
 func tradeEvent(event *binance_connector.WsTradeEvent) {

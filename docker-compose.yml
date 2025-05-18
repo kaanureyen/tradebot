@@ -25,6 +25,16 @@ services:
       - mongodb
       - fetcher
     restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - HEALTH_PORT=8081
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
   fetcher:
     build:
       context: .
@@ -32,6 +42,16 @@ services:
     depends_on:
       - redis
     restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - HEALTH_PORT=8080
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
   signal_gen:
     build:
       context: .
@@ -40,6 +60,16 @@ services:
       - redis
       - cacher
     restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      - HEALTH_PORT=8082
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8082/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 
 volumes:
