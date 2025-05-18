@@ -7,6 +7,13 @@ import (
 	"strconv"
 )
 
+func IsRunningInDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	return false
+}
+
 // initializes logger, starts health endpoint, inits&returns pointer to a shutdownOrchestrator
 func InitCommon(moduleName string) *ShutdownOrchestrator {
 	logger("[" + moduleName + "] ") // set logger and print start msg
