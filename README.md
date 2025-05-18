@@ -23,7 +23,11 @@ To run the services locally, you can use the following commands:
 
 ```bash
 go run ./cmd/fetcher
+```
+```bash
 go run ./cmd/cacher
+```
+```bash
 go run ./cmd/signal_gen
 ```
 
@@ -31,6 +35,8 @@ Note: You will need to have Redis & MongoDB instances running on your localhost.
 
 ```bash
 docker compose up --build 'redis'
+```
+```bash
 docker compose up --build 'mongodb'
 ```
 
@@ -66,13 +72,13 @@ go test -tags=integration ./...
 ## Monitoring
 
 Dashboard links are:
-cAdvisor: http://localhost:8080
-Prometheus: http://localhost:9090
-Grafana: http://localhost:3000 (default login: admin/admin)
+- cAdvisor: http://localhost:8080
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000 (default login: admin/admin)
 
 cAdvisor collects performance data from all containers.
-Prometheus scrapes cAdvisor and stores the data.
-Grafana can get data from Prometheus & visualize it, but needs some configuring:
+- Prometheus scrapes cAdvisor and stores the data.
+- Grafana can get data from Prometheus & visualize it, but needs some configuring:
 1) Login to the its dashboard.
 2) Go to Configuration -> Data Sources
 3) Add Prometheus URL: `http://prometheus:9090` and save.
