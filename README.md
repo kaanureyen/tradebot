@@ -77,7 +77,9 @@ Dashboard links are:
 - Grafana: http://localhost:3000 (default login: admin/admin)
 
 cAdvisor collects performance data from all containers.
+
 Prometheus scrapes cAdvisor and stores the data.
+
 Grafana can get data from Prometheus & visualize it, but needs some configuring:
 1) Login to the its dashboard.
 2) Go to Configuration -> Data Sources
