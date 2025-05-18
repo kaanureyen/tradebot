@@ -35,9 +35,9 @@ func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestr
 	stats := make(chan periodicStats)
 	go func() {
 		<-shutdownOrchestrator.Done
-		log.Println("Closing stats channel")
+		log.Println("[Info] Closing stats channel")
 		close(stats)
-		log.Println("Closed stats channel")
+		log.Println("[Info] Closed stats channel")
 	}()
 
 	sigStop := make([]chan struct{}, len(*s))
@@ -58,7 +58,7 @@ func (s *SlicePeriodicStats) FanIn(shutdownOrchestrator *shared.ShutdownOrchestr
 					stats <- v
 
 				case <-sigStop[i]:
-					log.Println("Stopping PeriodicStats FanIn with period:", v.period)
+					log.Println("[Info] Stopping PeriodicStats FanIn with period:", v.period)
 					sigDone[i] <- struct{}{}
 					return
 				}
@@ -101,7 +101,7 @@ func calculatePriceStats(chDatePrice chan shared.TradeDatePrice, startDate time.
 			// parse price to float
 			p, err := strconv.ParseFloat(v.Price, 64)
 			if err != nil {
-				log.Println("Error while parsing price as float: ", err)
+				log.Println("[Warning] while parsing price as float. Skipping the data. Error:: ", err)
 				continue
 			}
 
@@ -120,7 +120,7 @@ func calculatePriceStats(chDatePrice chan shared.TradeDatePrice, startDate time.
 			if delta >= 0 {
 				curAgg.Update(d, p)
 			} else {
-				log.Println("[Info] Discarding data:", v, "due to having a timestamp before the last processed interval:", lastSentDate)
+				log.Println("[Warning] Discarding data:", v, "due to having a timestamp before the last processed interval:", lastSentDate)
 			}
 		}
 	}()
@@ -135,7 +135,7 @@ func unmarshalTradeDatePrice(inp chan string) chan shared.TradeDatePrice {
 			var msgStruct shared.TradeDatePrice
 			err := json.Unmarshal([]byte(msg), &msgStruct)
 			if err != nil {
-				log.Println("Failed to unmarshal to TradeDatePrice:", err)
+				log.Println("[Warning] Failed to unmarshal to TradeDatePrice. Skipping the data. Error::", err)
 				continue
 			}
 			out <- msgStruct
@@ -165,7 +165,7 @@ func subscribeRedis(subCh string, done chan struct{}) chan string {
 					out <- v.Payload
 
 				case <-done:
-					log.Println("Stopping subscription:", subCh)
+					log.Println("[Info] Stopping subscription:", subCh)
 					return
 				}
 			}
