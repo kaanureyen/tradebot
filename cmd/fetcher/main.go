@@ -36,6 +36,20 @@ var tradesPublished = prometheus.NewCounter(
 	},
 )
 
+var tradeEventDelay = prometheus.NewSummary(
+	prometheus.SummaryOpts{
+		Name: "trade_event_delay_milliseconds",
+		Help: "Time taken to process and publish a trade event",
+	},
+)
+
+var tradeInfoAge = prometheus.NewSummary(
+	prometheus.SummaryOpts{
+		Name: "trade_info_age_milliseconds",
+		Help: "Difference of local time and trade time in milliseconds",
+	},
+)
+
 func main() {
 	shutdownOrchestrator := shared.InitCommon("fetcher") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
 	defer func() {
@@ -46,6 +60,8 @@ func main() {
 	// register the prometheus metric
 	prometheus.MustRegister(tradesReceived)
 	prometheus.MustRegister(tradesPublished)
+	prometheus.MustRegister(tradeEventDelay)
+	prometheus.MustRegister(tradeInfoAge)
 	// start prometheus metrics
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
@@ -57,20 +73,28 @@ func main() {
 }
 
 func tradeEvent(event *binance_connector.WsTradeEvent) {
-	go tradesReceived.Inc()
+	// prepare & update stats
+	start := time.Now()
+	tradesReceived.Inc()
+	tradeInfoAge.Observe(float64(time.Now().UnixMilli() - event.TradeTime))
 
+	// marshal into json
 	data, err := json.Marshal(shared.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
 		log.Printf("[Warning] Failed marshaling data. Skipping data.\nErr: %v\nData: %v", err, data)
 		return
 	}
 
+	// publish into redis
 	err = rdb.Publish(ctx, shared.RedisChannel, data).Err()
 	if err != nil {
 		log.Println("[Warning] Redis Publish error:", err)
 		return
 	}
-	go tradesPublished.Inc()
+
+	// update stats
+	tradesPublished.Inc()
+	tradeEventDelay.Observe(float64(time.Since(start).Nanoseconds()))
 }
 
 func errorEvent(err error) {
