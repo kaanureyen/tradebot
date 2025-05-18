@@ -2,18 +2,18 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Cacher",
+            "name": "Debug aggregator",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/cacher",
+            "program": "${workspaceFolder}/cmd/aggregator",
             "console": "integratedTerminal",
             "showLog": true,
             "env": {
                 "GO111MODULE": "on"
             },
             "buildFlags": "-tags=debug",
-            "output": "${workspaceFolder}/bin/cacher"
+            "output": "${workspaceFolder}/bin/aggregator"
         }
     ]
 }

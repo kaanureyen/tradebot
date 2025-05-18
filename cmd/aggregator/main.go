@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	shutdownOrchestrator := shared.InitCommon("cacher") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
+	shutdownOrchestrator := shared.InitCommon("aggregator") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
 	defer func() {
 		<-shutdownOrchestrator.Done // blocks until every shutdownOrchestrator.Get()'s recv is sent an empty struct, after a interrupt/terminate signal.
 		log.Println("[Info] Exiting...")

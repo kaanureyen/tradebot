@@ -6,7 +6,7 @@ const (
 	// common
 	HealthEndpointFirstPort = 8080
 	HealthEndpointLastPort  = 8100
-	// cacher
+	// aggregator
 	RedisChannel = "binance:trade:btcusdt"
 	// fetcher
 	TimeBeforeReconnect = 5 * time.Second // 300 connections per 5 minutes is the limit. this should be fine

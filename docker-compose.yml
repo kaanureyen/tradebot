@@ -16,10 +16,10 @@ services:
       - mongo_data:/data/db
     restart: always
 
-  cacher:
+  aggregator:
     build:
       context: .
-      dockerfile: ./cmd/cacher/Dockerfile
+      dockerfile: ./cmd/aggregator/Dockerfile
     depends_on:
       - redis
       - mongodb
@@ -59,7 +59,7 @@ services:
       dockerfile: ./cmd/signal_gen/Dockerfile
     depends_on:
       - redis
-      - cacher
+      - aggregator
     restart: always
     ports:
       - "9002:9002" # /healthz endpoint
