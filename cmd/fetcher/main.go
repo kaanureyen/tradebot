@@ -38,15 +38,17 @@ var tradesPublished = prometheus.NewCounter(
 
 var tradeEventDelay = prometheus.NewSummary(
 	prometheus.SummaryOpts{
-		Name: "trade_event_delay_milliseconds",
-		Help: "Time taken to process and publish a trade event",
+		Name:       "trade_event_delay_microseconds",
+		Help:       "Time taken to process and publish a trade event",
+		Objectives: map[float64]float64{0.5: 0.05, 0.95: 0.01, 0.99: 0.001},
 	},
 )
 
 var tradeInfoAge = prometheus.NewSummary(
 	prometheus.SummaryOpts{
-		Name: "trade_info_age_milliseconds",
-		Help: "Difference of local time and trade time in milliseconds",
+		Name:       "trade_info_age_milliseconds",
+		Help:       "Difference of local time and trade time in milliseconds",
+		Objectives: map[float64]float64{0.5: 0.05, 0.95: 0.01, 0.99: 0.001},
 	},
 )
 
@@ -74,10 +76,9 @@ func main() {
 
 func tradeEvent(event *binance_connector.WsTradeEvent) {
 	// prepare & update stats
-	start := time.Now()
-	tradesReceived.Inc()
 	tradeInfoAge.Observe(float64(time.Now().UnixMilli() - event.TradeTime))
-
+	tradesReceived.Inc()
+	start := time.Now()
 	// marshal into json
 	data, err := json.Marshal(shared.TradeDatePrice{TradeDate: event.TradeTime, Price: event.Price})
 	if err != nil {
@@ -91,10 +92,9 @@ func tradeEvent(event *binance_connector.WsTradeEvent) {
 		log.Println("[Warning] Redis Publish error:", err)
 		return
 	}
-
 	// update stats
+	tradeEventDelay.Observe(float64(time.Since(start).Microseconds()))
 	tradesPublished.Inc()
-	tradeEventDelay.Observe(float64(time.Since(start).Nanoseconds()))
 }
 
 func errorEvent(err error) {
