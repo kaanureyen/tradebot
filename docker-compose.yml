@@ -54,24 +54,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-  signal_gen:
-    build:
-      context: .
-      dockerfile: ./cmd/signal_gen/Dockerfile
-    depends_on:
-      - redis
-      - aggregator
-    restart: always
-    ports:
-      - "9002:9002" # /healthz endpoint
-    environment:
-      - HEALTH_PORT=9002
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9002/healthz"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
   prometheus:
     image: prom/prometheus

@@ -1,13 +1,12 @@
 # tradebot
 
-This tradebot repo contains of source of 3 services: `aggregator`, `fetcher`, `signal_gen`.
+This tradebot repo contains of source of 2 services: `aggregator`, `fetcher`.
 Its docker compose launches the following containers also:
 - redis & mongodb in addition to these services to communicate & store & load.
 - cadvisor & prometheus & grafana to collect, store and plot service metrics and container resource consumption data. See the section `Monitoring` down the page.
 
 - `fetcher` fetches the price data online, and sends it to `aggregator` via redis.
-- `aggregator` listens to the `fetcher`. Aggregates it to various time resolutions. Stores aggregate data via mongodb. Also sends the most recent aggregates to `signal_gen`  via redis.
-- `signal_gen` loads the needed aggregates from mongodb, and listens to redis to see the most recent aggregates from `aggregator`
+- `aggregator` listens to the `fetcher`. Buckets the price data to configured time resolution and calculates stats of the price. Calculates SMAs & generates buy-sell signals. Stores them in a mongo database.
 
 ## Build & Run Everything
 
@@ -30,9 +29,6 @@ go run ./cmd/fetcher
 ```
 ```bash
 go run ./cmd/aggregator
-```
-```bash
-go run ./cmd/signal_gen
 ```
 
 Note: You will need to have Redis & MongoDB instances running on your localhost. You can use the ones on docker though, application detects on runtime whether it is on docker or not and connects to the proper address. You can use the following commands:
