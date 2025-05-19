@@ -22,7 +22,7 @@ var rdb = redis.NewClient(&redis.Options{
 })
 var ctx = context.Background()
 
-// prometheus counter for metrics
+// prometheus metrics
 var tradesReceived = prometheus.NewCounter(
 	prometheus.CounterOpts{
 		Name: "trades_received_total",
@@ -59,7 +59,7 @@ func main() {
 		log.Println("[Info] Exiting...")
 	}()
 
-	// register the prometheus metric
+	// register the prometheus metrics
 	prometheus.MustRegister(tradesReceived)
 	prometheus.MustRegister(tradesPublished)
 	prometheus.MustRegister(tradeEventDelay)

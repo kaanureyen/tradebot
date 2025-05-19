@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Received & Published trade counts",
+  "description": "Received & Published trade counts, data age, processing latencies.",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
@@ -139,7 +139,7 @@
           "useBackend": false
         }
       ],
-      "title": "trade rate (1/seconds)",
+      "title": "trade info rate (1/seconds)",
       "type": "timeseries"
     },
     {
@@ -147,7 +147,7 @@
         "type": "prometheus",
         "uid": "aemace3o74yrkb"
       },
-      "description": "quantiles of the:\nsystem date - trade date\n(note: system date errors might shift this.",
+      "description": "trade event receive - publish delay",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -208,7 +208,7 @@
         "x": 11,
         "y": 0
       },
-      "id": 3,
+      "id": 4,
       "options": {
         "legend": {
           "calcs": [],
@@ -228,7 +228,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": true,
-          "expr": "trade_info_age_milliseconds",
+          "expr": "trade_event_delay_microseconds",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -237,7 +237,7 @@
           "useBackend": false
         }
       ],
-      "title": "trade info age (milliseconds)",
+      "title": "trade event delay (microseconds)",
       "type": "timeseries"
     },
     {
@@ -245,7 +245,7 @@
         "type": "prometheus",
         "uid": "aemace3o74yrkb"
       },
-      "description": "rate of received transactions - rate of published transactions",
+      "description": "rate of received transactions - rate of published transactions.\n\nthis indicates to either wrong json from binance, redis issues.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -331,7 +331,7 @@
           "refId": "A"
         }
       ],
-      "title": "drop rate (1/seconds)",
+      "title": "trade info error rate (1/seconds)",
       "type": "timeseries"
     },
     {
@@ -339,7 +339,7 @@
         "type": "prometheus",
         "uid": "aemace3o74yrkb"
       },
-      "description": "trade event receive - publish delay",
+      "description": "quantiles of the:\nsystem date - trade date\n(note: system date errors might shift this.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -400,7 +400,7 @@
         "x": 11,
         "y": 8
       },
-      "id": 4,
+      "id": 3,
       "options": {
         "legend": {
           "calcs": [],
@@ -420,7 +420,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": true,
-          "expr": "trade_event_delay_microseconds",
+          "expr": "trade_info_age_milliseconds",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -429,11 +429,110 @@
           "useBackend": false
         }
       ],
-      "title": "trade event delay (microseconds)",
+      "title": "trade info age (milliseconds)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "aemace3o74yrkb"
+      },
+      "description": "system time of aggregate generation vs. timestamp on trade info. note: this can shift with system time errors.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 11,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": true,
+          "expr": "aggregate_info_age_milliseconds",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "aggregate info delay (milliseconds)",
       "type": "timeseries"
     }
   ],
   "preload": false,
+  "refresh": "auto",
   "schemaVersion": 41,
   "tags": [],
   "templating": {
@@ -445,7 +544,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "fetcher_v2",
+  "title": "services",
   "uid": "bd94b057-3c92-42d1-8346-eb5ecac31489",
-  "version": 1
+  "version": 5
 }
