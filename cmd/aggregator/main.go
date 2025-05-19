@@ -96,7 +96,7 @@ func main() {
 	collTrade := MongoTradeCollection(client, ctx)
 
 	// price bucketing period
-	period := time.Second
+	period := 15 * time.Second
 
 	// initialize sma buffer
 	smaBuffer := SmaBuffer{}
@@ -204,8 +204,7 @@ func MongoAggregateCollection(client *mongo.Client, ctx context.Context) *mongo.
 	// try to create timeseries collection.
 	opts := options.CreateCollection().SetTimeSeriesOptions(
 		options.TimeSeries().
-			SetTimeField("lasttimestamp").
-			SetMetaField("btcusdt:1s"),
+			SetTimeField("lasttimestamp"),
 	)
 
 	err := client.Database("tradebot").CreateCollection(ctx, "price_stats", opts)
@@ -237,8 +236,7 @@ func MongoSmaCollection(client *mongo.Client, ctx context.Context) *mongo.Collec
 	// try to create timeseries collection.
 	opts := options.CreateCollection().SetTimeSeriesOptions(
 		options.TimeSeries().
-			SetTimeField("timestamp").
-			SetMetaField("btcusdt:1s:sma"),
+			SetTimeField("timestamp"),
 	)
 
 	err := client.Database("tradebot").CreateCollection(ctx, "price_stats_sma", opts)
@@ -270,8 +268,7 @@ func MongoTradeCollection(client *mongo.Client, ctx context.Context) *mongo.Coll
 	// try to create timeseries collection.
 	opts := options.CreateCollection().SetTimeSeriesOptions(
 		options.TimeSeries().
-			SetTimeField("timestamp").
-			SetMetaField("btcusdt:1s:sma:trade"),
+			SetTimeField("timestamp"),
 	)
 
 	err := client.Database("tradebot").CreateCollection(ctx, "price_stats_sma_trade", opts)
