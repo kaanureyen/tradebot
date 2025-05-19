@@ -53,6 +53,8 @@ Prometheus scrapes cAdvisor and provided `/metrics` endpoints from the services,
 
 Grafana gets data from Prometheus.
 
+![Dashboard screenshot showing the cAdvisor plots on Grafana](https://github.com/kaanureyen/tradebot/blob/main/doc/cadvisor.png?raw=true)
+
 Default dashboards are configured on Grafana, to show the following stats:
 - trade info rate
 - trade info error rate
