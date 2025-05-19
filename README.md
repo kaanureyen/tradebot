@@ -85,6 +85,8 @@ Also you can use MongoDB Compass to connect to the database to see in the `trade
 - `price_stats_sma` SMA50 and SMA200 data
 - `price_stats_sma_trade` Trade signals (BUY - SELL) based on SMA50 and SMA200. Also has the price at the decision.
 
+![MongoDB tradebot database price_stats_sma_trade collection screenshot showing a BUY operation](https://github.com/kaanureyen/tradebot/blob/main/doc/price_stats_sma_trade.png?raw=true)
+
 ## Test
 
 Unit tests:
