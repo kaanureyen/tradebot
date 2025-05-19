@@ -31,20 +31,23 @@ func main() {
 	// start prometheus metrics
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
-		log.Fatal("[Fatal][Error] Prometheus metrics endpoint could not be opened. Error: ", http.ListenAndServe(":2112", nil))
+		log.Fatal("[Fatal][Error] Prometheus metrics endpoint could not be opened. Error: ", http.ListenAndServe(":2113", nil))
 	}()
 
-	// start stat aggregators for different time periods & fan in into stats
-	var chPeriodicStats SlicePeriodicStats
-	chPeriodicStats.Add(shared.RedisChannel, 5*time.Second, shutdownOrchestrator)
-	chPeriodicStats.Add(shared.RedisChannel, time.Hour, shutdownOrchestrator)
-	chPeriodicStats.Add(shared.RedisChannel, time.Hour*24, shutdownOrchestrator)
-	stats := chPeriodicStats.FanIn(shutdownOrchestrator)
+	period := time.Second
+	aggCh := PeriodicPriceStats(shared.RedisChannel, period, shutdownOrchestrator)
+	sB := SmaBuffer{}
+	sB.Init(shared.SmaLongTerm)
+	for v := range aggCh {
+		log.Println("lastprice: ", v.lastPrice)
+		sB.AddWithLinInterpFill(v.lastPrice, v.lastTime, period)
 
-	func() {
-		for v := range stats {
-			aggregateInfoAge.Observe(float64(time.Since(v.value.lastTime).Milliseconds()))
-			log.Printf("[Info] Stat for %v is %#v", v.period, v.value.lastTime.UTC())
+		if sB.IsSmaReady(shared.SmaLongTerm) {
+			smaShortTerm, _ := sB.CalculateSma(shared.SmaShortTerm)
+			log.Printf("[Info] SMA%v:%v\n", shared.SmaShortTerm, smaShortTerm)
+
+			smaLongTerm, _ := sB.CalculateSma(shared.SmaLongTerm)
+			log.Printf("[Info] SMA%v:%v\n", shared.SmaLongTerm, smaLongTerm)
 		}
-	}()
+	}
 }
