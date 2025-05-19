@@ -24,4 +24,11 @@ var (
 			return "localhost:6379"
 		}
 	}()
+	MongoUri = func() string { // detect whether running under docker in runtime
+		if IsRunningInDocker() {
+			return "mongodb://mongodb:27017"
+		} else {
+			return "mongodb://localhost:27017"
+		}
+	}()
 )
