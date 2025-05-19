@@ -62,6 +62,8 @@ Default dashboards are configured on Grafana, to show the following stats:
 - BTCUSDT Price, SMA50, SMA200
 - Buy - Sell order rate
 
+![Dashboard screenshot showing the mentioned plots](https://github.com/kaanureyen/tradebot/blob/main/doc/dashboard.png?raw=true)
+
 ## See it in action
 
 You can see the messages in redis by connecting to the redis with:
