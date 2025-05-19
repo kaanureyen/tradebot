@@ -112,6 +112,9 @@ func main() {
 
 	lastDiff := 0.0
 	for v := range aggCh {
+		aggregateInfoAge.Observe(float64(time.Since(v.LastTime).Milliseconds()))
+		aggregatePrice.Set(v.LastPrice)
+
 		// Store to MongoDB time series
 		_, err := collAggr.InsertOne(ctx, v)
 		if err != nil {
@@ -149,8 +152,6 @@ func main() {
 				}
 			}
 			lastDiff = diff
-			aggregateInfoAge.Observe(float64(time.Since(v.LastTime).Milliseconds()))
-			aggregatePrice.Set(v.LastPrice)
 			aggregateSma200.Set(smaLongTerm)
 			aggregateSma50.Set(smaShortTerm)
 
