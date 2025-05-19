@@ -53,7 +53,14 @@ Prometheus scrapes cAdvisor and provided `/metrics` endpoints from the services,
 
 Grafana gets data from Prometheus.
 
-Default dashboards are configured on Grafana.
+Default dashboards are configured on Grafana, to show the following stats:
+- trade info rate
+- trade info error rate
+- trade event processing delay (0.50, 0.95, 0.99 percentiles)
+- trade info age (compared to local clock) (0.50, 0.95, 0.99 percentiles)
+- aggregation information delay (compared to local clock) (0.50, 0.95, 0.99 percentiles)
+- BTCUSDT Price, SMA50, SMA200
+- Buy - Sell order rate
 
 ## See it in action
 
@@ -70,6 +77,11 @@ subscribe binance:trade:btcusdt
 
 The channel descriptions are below:
 `binance:trade:btcusdt` Trade data from Binance via `fetcher`.
+
+Also you can use MongoDB Compass to connect to the database to see in the `tradebot` database, the following timeseries collections:
+`price_stats` stats about the price-buckets (min-max, first-last)
+`price_stats_sma` SMA50 and SMA200 data
+`price_stats_sma_trade` Trade signals (BUY - SELL) based on SMA50 and SMA200. Also has the price at the decision.
 
 ## Test
 
