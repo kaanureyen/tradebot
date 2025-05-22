@@ -59,14 +59,6 @@ type SmaStruct struct {
 	Sma200    float64   `bson:"sma200"`
 }
 
-type TradeSignal struct {
-	TimeStamp time.Time `bson:"timestamp"`
-	Signal    string    `bson:"signal"`
-	Price     float64   `bson:"price"`
-	Sma50     float64   `bson:"sma50"`
-	Sma200    float64   `bson:"sma200"`
-}
-
 func main() {
 	shutdownOrchestrator := shared.InitCommon("aggregator") // set logger name, start http health endpoint, initialize & start shutdownOrchestrator
 	defer func() {
@@ -88,12 +80,12 @@ func main() {
 	}()
 
 	// connect to MongoDB
-	client, ctx := MongoConnect()
+	client, ctx := shared.MongoConnect()
 	defer client.Disconnect(ctx)
 
-	collAggr := MongoAggregateCollection(client, ctx)
-	collSma := MongoSmaCollection(client, ctx)
-	collTrade := MongoTradeCollection(client, ctx)
+	collAggr := shared.MongoAggregateCollection(client, ctx)
+	collSma := shared.MongoSmaCollection(client, ctx)
+	collTrade := shared.MongoTradeCollection(client, ctx)
 
 	// price bucketing period
 	period := 15 * time.Second
@@ -127,7 +119,7 @@ func main() {
 			smaShortTerm, _ := smaBuffer.CalculateSma(shared.SmaShortTerm)
 			smaLongTerm, _ := smaBuffer.CalculateSma(shared.SmaLongTerm)
 
-			tradeSignal := TradeSignal{
+			tradeSignal := shared.TradeSignal{
 				TimeStamp: time.Now(),
 				Signal:    "",
 				Price:     v.LastPrice,
@@ -190,109 +182,4 @@ func LoadLastNIntoSmaBuffer(collection *mongo.Collection, n int, smaBuffer *SmaB
 		smaBuffer.AddWithLinInterpFill(v.LastPrice, v.LastTime, period)
 		log.Printf("[Debug] Loaded from DB: Price %v Time %v\n", v.LastPrice, v.LastTime)
 	}
-}
-
-func MongoConnect() (*mongo.Client, context.Context) {
-	ctx := context.Background()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(shared.MongoUri))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return client, ctx
-}
-
-func MongoAggregateCollection(client *mongo.Client, ctx context.Context) *mongo.Collection {
-	// try to create timeseries collection.
-	opts := options.CreateCollection().SetTimeSeriesOptions(
-		options.TimeSeries().
-			SetTimeField("lasttimestamp"),
-	)
-
-	err := client.Database("tradebot").CreateCollection(ctx, "price_stats", opts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	collection := client.Database("tradebot").Collection("price_stats")
-
-	// set indexing to descending
-	_, err = collection.Indexes().CreateOne(
-		ctx,
-		mongo.IndexModel{
-			Keys: bson.D{
-				{
-					Key:   "lasttimestamp",
-					Value: -1},
-			}, // descending index
-			Options: nil,
-		},
-	)
-	if err != nil {
-		log.Fatalf("[Error] Failed to create index: %v\n", err)
-	}
-	return collection
-}
-
-func MongoSmaCollection(client *mongo.Client, ctx context.Context) *mongo.Collection {
-	// try to create timeseries collection.
-	opts := options.CreateCollection().SetTimeSeriesOptions(
-		options.TimeSeries().
-			SetTimeField("timestamp"),
-	)
-
-	err := client.Database("tradebot").CreateCollection(ctx, "price_stats_sma", opts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	collection := client.Database("tradebot").Collection("price_stats_sma")
-
-	// set indexing to descending
-	_, err = collection.Indexes().CreateOne(
-		ctx,
-		mongo.IndexModel{
-			Keys: bson.D{
-				{
-					Key:   "timestamp",
-					Value: -1},
-			}, // descending index
-			Options: nil,
-		},
-	)
-	if err != nil {
-		log.Fatalf("[Error] Failed to create index: %v\n", err)
-	}
-	return collection
-}
-
-func MongoTradeCollection(client *mongo.Client, ctx context.Context) *mongo.Collection {
-	// try to create timeseries collection.
-	opts := options.CreateCollection().SetTimeSeriesOptions(
-		options.TimeSeries().
-			SetTimeField("timestamp"),
-	)
-
-	err := client.Database("tradebot").CreateCollection(ctx, "price_stats_sma_trade", opts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	collection := client.Database("tradebot").Collection("price_stats_sma_trade")
-
-	// set indexing to descending
-	_, err = collection.Indexes().CreateOne(
-		ctx,
-		mongo.IndexModel{
-			Keys: bson.D{
-				{
-					Key:   "timestamp",
-					Value: -1},
-			}, // descending index
-			Options: nil,
-		},
-	)
-	if err != nil {
-		log.Fatalf("[Error] Failed to create index: %v\n", err)
-	}
-	return collection
 }
